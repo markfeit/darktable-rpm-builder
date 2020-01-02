@@ -1,88 +1,89 @@
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
+#
+# Vagrantfile for Darktable RPM Builder
+#
 
-# All Vagrant configuration is done below. The "2" in Vagrant.configure
-# configures the configuration version (we support older styles for
-# backwards compatibility). Please don't change it unless you know what
-# you're doing.
+# Configure the following to taste:
+
+# These have been tested and work.
+# box = "fedora/30-cloud-base"
+box = "fedora/31-cloud-base"
+
+# These do not work but are here for later development.
+# box = "centos/7"
+# box = "centos/8"
+
+
+# Guest processors.  Nil will use all but one of the hosts's cores.
+vm_cpus = nil
+
+# Guest memory.  Nil will use a sane default (2 GiB)
+vm_memory = nil
+
+
+# NO USER-SERVICEABLE PARTS BELOW THIS LINE.
+
+
+require 'etc'
+
+
 Vagrant.configure("2") do |config|
-  # The most common configuration options are documented and commented below.
-  # For a complete reference, please see the online documentation at
-  # https://docs.vagrantup.com.
 
-  # Every Vagrant development environment requires a box. You can search for
-  # boxes at https://vagrantcloud.com/search.
+  config.vm.box = box
   
-  #config.vm.box = "centos/7"
-  #config.vm.box = "centos/8"
-  #config.vm.box = "fedora/30-cloud-base"
-  config.vm.box = "fedora/31-cloud-base"
+  # Enable X forwarding for testing
+  config.ssh.forward_agent = true
+  config.ssh.forward_x11 = true
 
-  # Disable automatic box update checking. If you disable this, then
-  # boxes will only be checked for updates when the user runs
-  # `vagrant box outdated`. This is not recommended.
-  # config.vm.box_check_update = false
+  # Set up CPUs and RAM
 
-  # Create a forwarded port mapping which allows access to a specific port
-  # within the machine from a port on the host machine. In the example below,
-  # accessing "localhost:8080" will access port 80 on the guest machine.
-  # NOTE: This will enable public access to the opened port
-  # config.vm.network "forwarded_port", guest: 80, host: 8080
+  if vm_cpus.nil?
+    vm_cpus = Etc.nprocessors - 1
+    if vm_cpus < 1
+      vm_cpus = 1
+    end
+  end
 
-  # Create a forwarded port mapping which allows access to a specific port
-  # within the machine from a port on the host machine and only allow access
-  # via 127.0.0.1 to disable public access
-  # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+  if vm_memory.nil?
+    vm_memory = 2048
+  end
 
-  # Create a private network, which allows host-only access to the machine
-  # using a specific IP.
-  # config.vm.network "private_network", ip: "192.168.33.10"
+  config.vm.provider "virtualbox" do |vbox|
+    vbox.cpus = vm_cpus    
+    vbox.memory = vm_memory
+  end
+ 
+  # Install and enable repos on various RHEL derivatives
+  
+  if config.vm.box.start_with?("rhel/", "centos/")
+    config.vm.provision "shell", inline: <<-SHELL
 
-  # Create a public network, which generally matched to bridged network.
-  # Bridged networks make the machine appear as another physical device on
-  # your network.
-  # config.vm.network "public_network"
+      yum -y install epel-release
 
-  # Share an additional folder to the guest VM. The first argument is
-  # the path on the host to the actual folder. The second argument is
-  # the path on the guest to mount the folder. And the optional third
-  # argument is a set of non-required options.
-  # config.vm.synced_folder "../data", "/vagrant_data"
+      for REPO in PowerTools centosplus
+      do
+        yum -q repolist all \
+        | awk '{ print $1 }' \
+        | fgrep -xq "${REPO}" \
+        && yum-config-manager --enable "${REPO}"
+      done
 
-  # Provider-specific configuration so you can fine-tune various
-  # backing providers for Vagrant. These expose provider-specific options.
-  # Example for VirtualBox:
-  #
-  # config.vm.provider "virtualbox" do |vb|
-  #   # Display the VirtualBox GUI when booting the machine
-  #   vb.gui = true
-  #
-  #   # Customize the amount of memory on the VM:
-  #   vb.memory = "1024"
-  # end
-  #
-  # View the documentation for the provider you are using for more
-  # information on available options.
+    SHELL
+  end
 
+
+  # Update and set up prerequisites
   config.vm.provision "shell", inline: <<-SHELL
 
-    # TODO: Enable this
-    # yum -y update
-
-    # TODO: Enable this only on EL
-    #yum -y install epel-release
+    yum -y update
 
     yum -y install \
-        git \
-        make
-
-    git clone https://github.com/markfeit/darktable-rpm-builder.git
-
-    cd darktable-rpm-builder
-
-    curl --location -s https://github.com/darktable-org/darktable/releases/download/release-3.0.0/darktable-3.0.0.tar.xz > darktable-3.0.0.tar.xz
-
-     make USE_VAGRANT=false INSTALL_PREREQS=true
+        make \
+        rpm-build \
+        cmake
 
   SHELL
 end
+
+
+# -*- mode: ruby -*-
+# vi: set ft=ruby :

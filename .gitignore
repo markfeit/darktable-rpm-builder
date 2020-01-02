@@ -1,8 +1,9 @@
 # Things for Git to ignore
 
-build.log
-rpmbuild
 .ccache
 .vagrant
+build.log
+rpmbuild
+ssh.config
 *.tar.*
 *~

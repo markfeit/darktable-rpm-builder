@@ -1,0 +1,235 @@
+#
+# RPM Spec for darktable
+#
+
+# This spec does not work with RHEL and derivatives, largely beause
+# some of the requirements can't be easily met with those
+# distributions.  There are some remnants of attempts to build with
+# RHEL in this file that have been left in place should someone find a
+# way to make them work.
+
+# Set this to 1 to develop for RHEL, disabling the error below.
+%define development 0
+
+%if 0%{?el7}%{?el8} && ! %{development}
+%{error:This RPM spec does not work on RHEL derivatives.}
+%endif
+
+
+Name:     darktable
+Version:  __VERSION__
+Release:  1%{?dist}
+Summary:  Utility to organize and develop raw images
+License:  GPLv3+
+URL:      https://www.darktable.org
+
+
+%define namever %{name}-%{version}
+%define tarball %{namever}.tar.xz
+
+
+Source0: %{tarball}
+
+
+BuildRequires: cairo-devel
+BuildRequires: ccache
+BuildRequires: clang
+%if 0%{?el7}
+BuildRequires: cmake3 >= 3.10
+%else
+BuildRequires: cmake >= 3.10
+%endif
+BuildRequires: colord
+BuildRequires: colord-devel
+BuildRequires: colord-gtk-devel
+BuildRequires: cups-devel
+BuildRequires: dbus-glib-devel
+BuildRequires: desktop-file-utils
+BuildRequires: exiv2-devel
+%if 0%{?fedora}
+# Not available in CentOS
+BuildRequires: flickcurl-devel
+%endif
+BuildRequires: gcc
+BuildRequires: gcc-c++
+BuildRequires: gettext-devel
+BuildRequires: GraphicsMagick-devel
+BuildRequires: gtk3-devel
+BuildRequires: intltool
+BuildRequires: iso-codes-devel
+BuildRequires: json-glib-devel
+BuildRequires: lcms2-devel
+BuildRequires: lensfun-devel
+BuildRequires: libappstream-glib
+BuildRequires: libcurl-devel >= 7.18.0
+BuildRequires: libgphoto2-devel
+BuildRequires: libjpeg-devel
+BuildRequires: libpng-devel
+BuildRequires: librsvg2-devel >= 2.26
+BuildRequires: libsecret-devel
+BuildRequires: libsoup-devel >= 2.4
+BuildRequires: libtiff-devel
+BuildRequires: libwebp-devel
+BuildRequires: libxslt
+BuildRequires: llvm-devel
+# Fedora uses the built-in lua, EL7 uses bundled lua
+# TODO: Check EL8
+%if 0%{?fedora}
+BuildRequires: lua-devel >= 5.3
+%endif
+%if 0%{?fedora}
+# Not available in CentOS
+BuildRequires: openexr-devel
+%endif
+%if 0%{?fedora}
+# Not available in CentOS
+BuildRequires: openjpeg-devel
+%endif
+%if 0%{?fedora}
+# Not available in CentOS
+BuildRequires: osm-gps-map-devel >= 1.0
+%endif
+BuildRequires: perl
+BuildRequires: pugixml-devel >= 1.8
+%if 0%{?fedora}
+# Not available in CentOS
+BuildRequires: saxon
+%endif
+BuildRequires: sqlite-devel
+BuildRequires: zlib-devel
+
+
+Requires: cairo
+Requires: colord
+Requires: colord-gtk
+Requires: colord-libs
+Requires: cups-libs
+Requires: dbus-glib
+Requires: exiv2
+%if 0%{?fedora}
+# Not available in CentOS
+Requires: flickcurl
+%endif
+%if 0%{?fedora}
+# Not available in CentOS
+Requires: fop
+%endif
+Requires: gettext
+Requires: GraphicsMagick
+Requires: gtk3
+Requires: iso-codes
+Requires: json-glib
+Requires: lcms2
+Requires: lensfun
+Requires: libcurl >= 7.18.0
+Requires: libgphoto2
+Requires: libjpeg
+Requires: libpng
+Requires: librsvg2 >= 2.26
+Requires: libsecret
+Requires: libsoup >= 2.4
+Requires: libtiff
+Requires: libwebp
+# Fedora uses the built-in lua, EL7 uses bundled lua
+# TODO: Check EL8
+%if 0%{?fedora}
+Requires: lua >= 5.3
+%endif
+%if 0%{?fedora}
+# Not available in CentOS
+Requires: openexr
+%endif
+%if 0%{?fedora}
+# Not available in CentOS
+Requires: openjpeg
+%endif
+%if 0%{?fedora}
+# Not available in CentOS
+Requires: osm-gps-map >= 1.0
+%endif
+Requires: pugixml >= 1.8
+Requires: sqlite
+Requires: zlib
+
+# ------------------------------------------
+
+### BuildRequires: opencl-headers
+### BuildRequires: pkgconfig >= 0.22
+### BuildRequires: po4a
+### BuildRequires: /usr/bin/pod2man
+
+
+
+# Concerning rawspeed bundled library, see
+# https://fedorahosted.org/fpc/ticket/550#comment:9
+Provides: bundled(rawspeed)
+
+# TODO: Check EL8
+%if 0%{?el7}
+Provides: bundled(lua)
+%endif
+
+# uses xmmintrin.h
+ExclusiveArch: x86_64 aarch64
+
+
+%description
+Darktable is a virtual light-table and darkroom for photographers: it
+manages your digital negatives in a database and lets you view them
+through a zoom-able light-table.  It also enables you to develop raw
+images and enhance them.
+
+
+
+%prep
+# The usual prep macro doesn't handle .xz files.
+tar xJf ${RPM_SOURCE_DIR}/%{tarball}
+
+
+
+%build
+cd %{namever}
+./build.sh --prefix %{_prefix}
+
+
+
+%install
+%{__make} -C %{namever}/build DESTDIR=%{buildroot} install
+
+
+
+%find_lang %{name}
+appstream-util validate-relax --nonet %{buildroot}/%{_datadir}/appdata/darktable.appdata.xml
+
+
+
+%post
+touch --no-create %{_datadir}/icons/hicolor &>/dev/null || true
+
+
+
+%postun
+update-desktop-database &> /dev/null || true
+if [ $1 -eq 0 ] ; then
+    touch --no-create %{_datadir}/icons/hicolor &>/dev/null
+    gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || true
+fi
+
+
+
+%posttrans
+gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || true
+
+
+
+%files -f %{name}.lang
+# TODO: Re-enable this and fix problems
+# %license LICENSE
+%{_bindir}/*
+%{_libdir}/darktable
+%{_datadir}/darktable
+%{_datadir}/applications/*
+%{_datadir}/appdata/*
+%{_datadir}/icons/hicolor/*/apps/*
+%{_docdir}/*
+%{_mandir}/man1/*
