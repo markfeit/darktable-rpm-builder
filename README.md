@@ -4,9 +4,9 @@ This package uses Vagrant to build source and binary RPMs for
 darktable under Fedora.
 
 **NOTE:** This spec does not work with RHEL and derivatives, largely
-beause some of the requirements can't be easily met with those #
-distributions.  There are some remnants of attempts to build with #
-RHEL that have been left in place should someone find a # way to make
+beause some of the requirements can't be easily met with those 
+distributions.  There are some remnants of attempts to build with
+RHEL that have been left in place should someone find a way to make
 them work.
 
 
