@@ -151,13 +151,6 @@ Requires: pugixml >= 1.8
 Requires: sqlite
 Requires: zlib
 
-# ------------------------------------------
-
-### BuildRequires: opencl-headers
-### BuildRequires: pkgconfig >= 0.22
-### BuildRequires: po4a
-### BuildRequires: /usr/bin/pod2man
-
 
 
 # Concerning rawspeed bundled library, see
